@@ -30,6 +30,18 @@ RUN apk update \
     && update-ca-certificates
 
 COPY --from=builder2 /build/veloera /
+
+RUN adduser \
+    --disabled-password \
+    --gecos "" \
+    --home "/nonexistent" \
+    --shell "/sbin/nologin" \
+    --no-create-home \
+    --uid 10014 \
+    "choreo"
+# Use the above created unprivileged user
+USER 10014
+
 EXPOSE 3000
 WORKDIR /data
 ENTRYPOINT ["/veloera"]
