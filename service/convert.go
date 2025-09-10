@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"strings"
 	"veloera/common"
-	"veloera/constant"
 	"veloera/dto"
 	relaycommon "veloera/relay/common"
 )
