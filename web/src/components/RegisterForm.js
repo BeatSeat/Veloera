@@ -70,20 +70,10 @@ const RegisterForm = () => {
 
   const { username, password, password2 } = inputs;
 
-  // Process AFF code on component mount
+  // Update email verification when status changes
   useEffect(() => {
-    processAffCode();
-  }, []);
-
-  // Load status and set email verification
-  useEffect(() => {
-    let status = localStorage.getItem('status');
-    if (status) {
-      status = JSON.parse(status);
-      setStatus(status);
-      setShowEmailVerification(status.email_verification);
-    }
-  }, [setStatus]);
+    setShowEmailVerification(status.email_verification);
+  }, [status]);
 
   const handleSubmit = async (e) => {
     if (password.length < 8) {
@@ -101,21 +91,22 @@ const RegisterForm = () => {
       }
       setLoading(true);
       
-      // Handle AFF code if enabled
+      // Handle AFF code if enabled - 直接构建请求数据
+      let requestData = { ...inputs };
       let statusFromStorage = localStorage.getItem('status');
       if (statusFromStorage) {
         statusFromStorage = JSON.parse(statusFromStorage);
         if (statusFromStorage.aff_enabled === true) {
           let affCode = localStorage.getItem('aff');
           if (affCode) {
-            setInputs(prev => ({ ...prev, aff_code: affCode }));
+            requestData.aff_code = affCode;
           }
         }
       }
       
       const res = await API.post(
         `/api/user/register?turnstile=${turnstileToken}`,
-        inputs,
+        requestData,
       );
       const { success, message } = res.data;
       if (success) {

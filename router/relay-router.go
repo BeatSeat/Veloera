@@ -44,7 +44,6 @@ func SetRelayRouter(router *gin.Engine) {
 		httpRouter := v1Router.Group("")
 		httpRouter.Use(middleware.Distribute())
 		httpRouter.POST("/messages", controller.RelayClaude)
-		httpRouter.POST("/messages/count_tokens", controller.RelayTokenCount)
 		httpRouter.POST("/completions", controller.Relay)
 		httpRouter.POST("/chat/completions", controller.Relay)
 		httpRouter.POST("/edits", controller.Relay)
@@ -70,12 +69,29 @@ func SetRelayRouter(router *gin.Engine) {
 		httpRouter.DELETE("/models/:model", controller.RelayNotImplemented)
 		httpRouter.POST("/moderations", controller.Relay)
 		httpRouter.POST("/rerank", controller.Relay)
+
+		// Token count route (no channel distribution needed)
+		v1Router.POST("/messages/count_tokens", controller.RelayTokenCount)
 	}
 
 	// 设置 /v1/models 路由
 	modelsRouter := router.Group("/v1/models")
 	modelsRouter.Use(middleware.TokenAuth())
 	setupModelsRouter(modelsRouter)
+
+	// 设置 /v1beta/models 路由 (Gemini 兼容)
+	geminiModelsRouter := router.Group("/v1beta/models")
+	geminiModelsRouter.Use(middleware.TokenAuth())
+	{
+		geminiModelsRouter.GET("", controller.ListGeminiModels)
+		geminiModelsRouter.GET("/:model", controller.RetrieveGeminiModel)
+	}
+
+	geminiActionRouter := router.Group("/v1beta/models")
+	geminiActionRouter.Use(middleware.TokenAuth(), middleware.TokenRateLimit(), middleware.ModelRequestRateLimit(), middleware.Distribute())
+	{
+		geminiActionRouter.POST("/:model", controller.RelayGemini)
+	}
 
 	// 设置 /hf/v1/models 路由
 	hfModelsRouter := router.Group("/hf/v1/models")

@@ -57,48 +57,51 @@ func GetStatus(c *gin.Context) {
 		"success": true,
 		"message": "",
 		"data": gin.H{
-			"version":                     common.Version,
-			"start_time":                  common.StartTime,
-			"email_verification":          common.EmailVerificationEnabled,
-			"github_oauth":                common.GitHubOAuthEnabled,
-			"github_client_id":            common.GitHubClientId,
-			"linuxdo_oauth":               common.LinuxDOOAuthEnabled,
-			"linuxdo_client_id":           common.LinuxDOClientId,
-			"linuxdo_minimum_trust_level": common.LinuxDOMinimumTrustLevel,
-			"telegram_oauth":              common.TelegramOAuthEnabled,
-			"telegram_bot_name":           common.TelegramBotName,
-			"system_name":                 common.SystemName,
-			"logo":                        common.Logo,
-			"footer_html":                 common.Footer,
-			"wechat_qrcode":               common.WeChatAccountQRCodeImageURL,
-			"wechat_login":                common.WeChatAuthEnabled,
-			"server_address":              setting.ServerAddress,
-			"price":                       setting.Price,
-			"min_topup":                   setting.MinTopUp,
-			"turnstile_check":             common.TurnstileCheckEnabled,
-			"turnstile_site_key":          common.TurnstileSiteKey,
-			"top_up_link":                 common.TopUpLink,
-			"docs_link":                   operation_setting.GetGeneralSetting().DocsLink,
-			"quota_per_unit":              common.QuotaPerUnit,
-			"display_in_currency":         common.DisplayInCurrencyEnabled,
-			"enable_batch_update":         common.BatchUpdateEnabled,
-			"enable_drawing":              common.DrawingEnabled,
-			"enable_task":                 common.TaskEnabled,
-			"enable_data_export":          common.DataExportEnabled,
-			"data_export_default_time":    common.DataExportDefaultTime,
-			"default_collapse_sidebar":    common.DefaultCollapseSidebar,
-			"enable_online_topup":         setting.PayAddress != "" && setting.EpayId != "" && setting.EpayKey != "",
-			"mj_notify_enabled":           setting.MjNotifyEnabled,
-			"chats":                       setting.Chats,
-			"demo_site_enabled":           operation_setting.DemoSiteEnabled,
-			"self_use_mode_enabled":       operation_setting.SelfUseModeEnabled,
-			"oidc_enabled":                system_setting.GetOIDCSettings().Enabled,
-			"oidc_client_id":              system_setting.GetOIDCSettings().ClientId,
-			"oidc_authorization_endpoint": system_setting.GetOIDCSettings().AuthorizationEndpoint,
-			"setup":                       constant.Setup,
-			"check_in_enabled":            common.CheckInEnabled,
-			"aff_enabled":                 affEnabled,
-			"log_chat_content_enabled":    logChatContentEnabled,
+			"version":                      common.Version,
+			"start_time":                   common.StartTime,
+			"email_verification":           common.EmailVerificationEnabled,
+			"github_oauth":                 common.GitHubOAuthEnabled,
+			"github_client_id":             common.GitHubClientId,
+			"linuxdo_oauth":                common.LinuxDOOAuthEnabled,
+			"linuxdo_client_id":            common.LinuxDOClientId,
+			"linuxdo_minimum_trust_level":  common.LinuxDOMinimumTrustLevel,
+			"idcflare_oauth":               common.IDCFlareOAuthEnabled,
+			"idcflare_client_id":           common.IDCFlareClientId,
+			"idcflare_minimum_trust_level": common.IDCFlareMinimumTrustLevel,
+			"telegram_oauth":               common.TelegramOAuthEnabled,
+			"telegram_bot_name":            common.TelegramBotName,
+			"system_name":                  common.SystemName,
+			"logo":                         common.Logo,
+			"footer_html":                  common.Footer,
+			"wechat_qrcode":                common.WeChatAccountQRCodeImageURL,
+			"wechat_login":                 common.WeChatAuthEnabled,
+			"server_address":               setting.ServerAddress,
+			"price":                        setting.Price,
+			"min_topup":                    setting.MinTopUp,
+			"turnstile_check":              common.TurnstileCheckEnabled,
+			"turnstile_site_key":           common.TurnstileSiteKey,
+			"top_up_link":                  common.TopUpLink,
+			"docs_link":                    operation_setting.GetGeneralSetting().DocsLink,
+			"quota_per_unit":               common.QuotaPerUnit,
+			"display_in_currency":          common.DisplayInCurrencyEnabled,
+			"enable_batch_update":          common.BatchUpdateEnabled,
+			"enable_drawing":               common.DrawingEnabled,
+			"enable_task":                  common.TaskEnabled,
+			"enable_data_export":           common.DataExportEnabled,
+			"data_export_default_time":     common.DataExportDefaultTime,
+			"default_collapse_sidebar":     common.DefaultCollapseSidebar,
+			"enable_online_topup":          setting.PayAddress != "" && setting.EpayId != "" && setting.EpayKey != "",
+			"mj_notify_enabled":            setting.MjNotifyEnabled,
+			"chats":                        setting.Chats,
+			"demo_site_enabled":            operation_setting.DemoSiteEnabled,
+			"self_use_mode_enabled":        operation_setting.SelfUseModeEnabled,
+			"oidc_enabled":                 system_setting.GetOIDCSettings().Enabled,
+			"oidc_client_id":               system_setting.GetOIDCSettings().ClientId,
+			"oidc_authorization_endpoint":  system_setting.GetOIDCSettings().AuthorizationEndpoint,
+			"setup":                        constant.Setup,
+			"check_in_enabled":             common.CheckInEnabled,
+			"aff_enabled":                  affEnabled,
+			"log_chat_content_enabled":     logChatContentEnabled,
 		},
 	})
 	return
@@ -139,11 +142,38 @@ func GetMidjourney(c *gin.Context) {
 
 func GetHomePageContent(c *gin.Context) {
 	common.OptionMapRWMutex.RLock()
-	defer common.OptionMapRWMutex.RUnlock()
+	content := common.OptionMap["HomePageContent"]
+	common.OptionMapRWMutex.RUnlock()
+
+	// For HTML content starting with <!DOCTYPE, we need to prevent JSON encoding from escaping HTML
+	// Check if it's a complete HTML document
+	if strings.HasPrefix(strings.TrimSpace(content), "<!DOCTYPE") || strings.HasPrefix(strings.TrimSpace(content), "<html") {
+		// Use custom JSON encoder that doesn't escape HTML
+		response := map[string]interface{}{
+			"success": true,
+			"message": "",
+			"data":    content,
+		}
+
+		encoder := json.NewEncoder(c.Writer)
+		encoder.SetEscapeHTML(false) // Don't escape HTML characters
+		c.Header("Content-Type", "application/json")
+		c.Status(http.StatusOK)
+		if err := encoder.Encode(response); err != nil {
+			// Fallback to regular JSON if encoding fails
+			c.JSON(http.StatusOK, gin.H{
+				"success": false,
+				"message": "Failed to encode response",
+			})
+		}
+		return
+	}
+
+	// For non-HTML content, use regular JSON encoding
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "",
-		"data":    common.OptionMap["HomePageContent"],
+		"data":    content,
 	})
 	return
 }
